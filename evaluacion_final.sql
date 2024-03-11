@@ -155,17 +155,112 @@ WHERE `actor_id` NOT IN (SELECT `actor_id` -- selecciono la columa actor_id. As�
 -- El resultado de la consulta da NULL ya que parece ser que todos los IDs de actores se encuentran la tabla film_actor
 
 
-/* 16. 
+/* 16. Encuentra el título de todas las películas que fueron lanzadas entre el año 2005 y 2010.
 */
 
-/* 17. 
+SELECT `title`, `release_year`
+	FROM `film`
+    WHERE `release_year` >= 2005 AND `release_year` <= 2010;
+
+/* 17. Encuentra el título de todas las películas que son de la misma categoría que "Family".
 */
 
-/* 18. 
+SELECT `f`.`title` -- , `c`.`name`
+	FROM `film` AS `f`
+    INNER JOIN `film_category` AS `fc`
+		ON `f`.`film_id` = `fc`.`film_id`
+	INNER JOIN `category` AS `c`
+		ON `fc`.`category_id` = `c`.`category_id`
+	WHERE `c`.`name` = 'Family';
+
+/* 18. Muestra el nombre y apellido de los actores que aparecen en más de 10 películas.
+*/
+-- realizo un INNER JOIN mediante actor_id. Lo agrupo mediante el ID también.
+-- en el HAVING pongo la condición usando COUNT en el ID de la película
+
+SELECT `a`.`first_name`, `a`.`last_name`
+	FROM `actor` AS `a`
+    INNER JOIN `film_actor` AS `fa`
+		ON `a`.`actor_id` = `fa`.`actor_id`
+	GROUP BY `a`.`actor_id`
+		HAVING COUNT(`fa`.`film_id`) > 10
+	ORDER BY `a`.`last_name`;
+    
+
+/* 19. Encuentra el título de todas las películas que son "R" y tienen una duración mayor a 2 horas en la tabla `film`.
 */
 
-/* 19. 
+SELECT `title` -- , `rating`, `length`
+	FROM `film`
+    WHERE `rating` = 'R' AND `length` > 120;
+    
+
+/* 20. Encuentra las categorías de películas que tienen un promedio de duración superior a 120 minutos y muestra el nombre de la categoría junto con el promedio de duración.
 */
 
-/* 20. 
+SELECT `c`.`name`, AVG(`f`.`length`) AS `length_avg`
+	FROM `category` AS `c`
+    INNER JOIN `film_category` AS `fc`
+		ON `c`.`category_id` = `fc`.`category_id`
+	INNER JOIN `film` AS `f`
+		ON `fc`.`film_id` = `f`.`film_id`
+	GROUP BY `c`.`name`
+		HAVING AVG(`length`) > 120;
+        
+/* 21. Encuentra los actores que han actuado en al menos 5 películas y muestra el nombre del actor junto con la cantidad de películas en las que han actuado.
 */
+
+SELECT CONCAT(`a`.`first_name`, ' ', `a`.`last_name`) AS `nombre`, COUNT(`fa`.`film_id`) AS `films`
+	FROM `actor` AS `a`
+    INNER JOIN `film_actor` AS `fa`
+		ON `a`.`actor_id` = `fa`.`actor_id`
+	GROUP BY `a`.`actor_id`
+		HAVING COUNT(`fa`.`film_id`) >= 5
+	ORDER BY `films`;
+
+/* 22. Encuentra el título de todas las películas que fueron alquiladas por más de 5 días. 
+Utiliza una subconsulta para encontrar los rental_ids con una duración superior a 5 días y luego selecciona las películas correspondientes.
+*/
+
+SELECT DISTINCT `i`.`film_id` -- uso de DISTINCT para que no haya duplicados
+	FROM `rental` AS `r`
+    INNER JOIN `inventory` AS `i` -- se hace un INNER JOIN con la tabla 'inventory' para poder sacar el ID de la película
+		ON `r`.`inventory_id` = `i`.`inventory_id`
+    WHERE DATEDIFF(`return_date`, `rental_date`) > 5; -- se usa DATEDIFF para calcular la diferencia en la fecha
+    
+--
+
+SELECT `title`
+	FROM `film`
+    WHERE `film_id` IN (SELECT DISTINCT `i`.`film_id`
+							FROM `rental` AS `r`
+							INNER JOIN `inventory` AS `i`
+								ON `r`.`inventory_id` = `i`.`inventory_id`
+							WHERE DATEDIFF(`return_date`, `rental_date`) > 5
+                            );
+
+
+/* 23. Encuentra el nombre y apellido de los actores que no han actuado en ninguna película de la categoría "Horror". 
+Utiliza una subconsulta para encontrar los actores que han actuado en películas de la categoría "Horror" y luego exclúyelos de la lista de actores.
+*/
+
+SELECT DISTINCT `fa`.`actor_id` -- uso de DISTINCT para que no haya duplicados
+	FROM `category` AS `c` 
+    INNER JOIN `film_category` AS `fc`
+		ON `c`.`category_id` = `fc`.`category_id`
+	INNER JOIN `film_actor` AS `fa`
+		ON `fc`.`film_id` = `fa`.`film_id`
+	WHERE `c`.`name` = 'Horror';
+
+SELECT CONCAT(`first_name`, ' ', `last_name`) AS `name`, `actor_id`
+	FROM `actor`
+    WHERE `actor_id` NOT IN (SELECT DISTINCT `fa`.`actor_id` 
+								FROM `category` AS `c` 
+								INNER JOIN `film_category` AS `fc`
+									ON `c`.`category_id` = `fc`.`category_id`
+								INNER JOIN `film_actor` AS `fa`
+									ON `fc`.`film_id` = `fa`.`film_id`
+								WHERE `c`.`name` = 'Horror'
+                                )
+	ORDER BY `last_name`;
+    
