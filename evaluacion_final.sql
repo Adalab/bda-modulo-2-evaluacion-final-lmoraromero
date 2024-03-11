@@ -264,3 +264,57 @@ SELECT CONCAT(`first_name`, ' ', `last_name`) AS `name`, `actor_id`
                                 )
 	ORDER BY `last_name`;
     
+/* BONUS
+*/
+
+/* 24. Encuentra el título de las películas que son comedias y tienen una duración mayor a 180 minutos en la tabla `film`.
+*/
+
+SELECT `f`.`film_id`
+	FROM `category` AS `c` 
+    INNER JOIN `film_category` AS `fc`
+		ON `c`.`category_id` = `fc`.`category_id`
+	INNER JOIN `film` AS `f`
+		ON `fc`.`film_id` = `f`.`film_id`
+	WHERE `c`.`name` = 'Comedy';
+
+--
+
+SELECT `title` -- , `length`
+	FROM `film`
+    WHERE `film_id` IN (SELECT `f`.`film_id`
+							FROM `category` AS `c` 
+							INNER JOIN `film_category` AS `fc`
+								ON `c`.`category_id` = `fc`.`category_id`
+							INNER JOIN `film` AS `f`
+								ON `fc`.`film_id` = `f`.`film_id`
+							WHERE `c`.`name` = 'Comedy')
+						AND `length` > 180;
+                        
+/* 25. Encuentra todos los actores que han actuado juntos en al menos una película. 
+La consulta debe mostrar el nombre y apellido de los actores y el número de películas en las que han actuado juntos.
+*/
+
+-- Hago una subconsulta emparejando los IDs de los actores que han trabajado juntos. Para eso realizo un INNER JOIN con la propia tabla
+
+SELECT `fa1`.`actor_id` AS `actor1_id`, `fa2`.`actor_id` AS `actor2_id`
+	FROM `film_actor` AS `fa1`
+    INNER JOIN `film_actor` AS `fa2` 
+		ON `fa1`.`film_id` = `fa2`.`film_id` AND `fa1`.`actor_id` < `fa2`.`actor_id`; -- esta última parte es para que no se duplique el resultado. 
+    
+-- 
+
+SELECT CONCAT(`a1`.`first_name`, ' ', `a1`.`last_name`) AS `name_actor1`,
+	CONCAT(`a2`.`first_name`, ' ', `a2`.`last_name`) AS `name_actor2`,
+	COUNT(*) AS `movies_tog`
+        
+	FROM (SELECT `fa1`.`actor_id` AS `actor1_id`, `fa2`.`actor_id` AS `actor2_id`
+			FROM `film_actor` AS `fa1`
+			INNER JOIN `film_actor` AS `fa2` 
+				ON `fa1`.`film_id` = `fa2`.`film_id` AND `fa1`.`actor_id` < `fa2`.`actor_id`) AS `subquery`
+	INNER JOIN `actor` AS `a1`
+		ON `subquery`.`actor1_id` = `a1`.`actor_id`
+	INNER JOIN `actor` AS `a2`
+		ON `subquery`.`actor2_id` = `a2`.`actor_id`
+	GROUP BY `actor1_id`, `actor2_id`
+    HAVING `movies_tog` > 0;
