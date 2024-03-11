@@ -1,5 +1,6 @@
 /* EVALUACIÓN FINAL MÓDULO 02
 */
+
 USE `sakila`;
 
 
@@ -17,7 +18,8 @@ SELECT `title` -- , `rating`
 
 /* 3. Encuentra el título y la descripción de todas las películas que contengan la palabra "amazing" en su descripción.
 */
--- uso de % para poder buscar la palabra en cualquier posición mediante LIKE
+-- uso de % antes y después de 'amazing' para segurar que la palabra puede estar en cualquier posición dentro de la cadena
+
 SELECT `title`, `description`
 	FROM `film`
     WHERE `description` LIKE '%amazing%';
@@ -39,15 +41,22 @@ SELECT CONCAT(`first_name`, ' ', `last_name`) AS `name`
 
 /* 6. Encuentra el nombre y apellido de los actores que tengan "Gibson" en su apellido.
 */
+-- En este caso usar IN y LIKE da el mismo resultado, pero en otros casos puede ser diferente. Con IN se buscarían las coincidencias exactas
+-- En el caso de LIKE, al crear el patrón serái cualquier apellido que contenga 'GIBSON'
 
 SELECT `first_name`, `last_name`
 	FROM `actor`
     WHERE `last_name` IN ('GIBSON');
     
+SELECT `first_name`, `last_name`
+	FROM `actor`
+    WHERE `last_name` LIKE '%GIBSON%';
+    
+ -- opción del nombre con CONCAT:
+ 
 SELECT CONCAT(`first_name`, ' ', `last_name`) AS `name`
 	FROM `actor`
-	WHERE `last_name` IN ('GIBSON')
-    ORDER BY `name`;
+	WHERE `last_name` LIKE '%GIBSON%';
     
 /* 7. Encuentra los nombres de los actores que tengan un actor_id entre 10 y 20
 */
@@ -60,6 +69,7 @@ SELECT CONCAT(`first_name`, ' ', `last_name`) AS `name`, `actor_id`
 
 /* 8. Encuentra el título de las películas en la tabla `film` que no sean ni "R" ni "PG-13" en cuanto a su clasificación.
 */
+-- uso de NOT IN para excluir la condición
 
 SELECT `title` -- , `rating`
 	FROM `film`
@@ -76,8 +86,8 @@ SELECT `rating`, COUNT(`title`) AS `total_film`
 /* 10. Encuentra la cantidad total de películas alquiladas por cada cliente y muestra el ID del cliente, 
 su nombre y apellido junto con la cantidad de películas alquiladas
 */
--- Al ser dos tablas distintas, realizo un INNER JOIN para poder sacar el nombre y el apellido de los clientes, conectando mediante su ID.
--- Para encontrar el total de películar alquiladas, realizo un COUNT al que nombro 'total_rent' y lo agrupo mediante el ID del cliente
+-- utilizo INNER JOIN entre las tablas 'rental' y 'customer' para combinar la información de los clientes mediante el ID.
+-- uso de la función COUNT para contar el número de alquileres por cliente y mediante GROUP BY se agrupa por ID del cliente
     
 SELECT `r`.`customer_id`, `c`.`first_name`, `c`.`last_name`, COUNT(*) AS `total_rent`
 	FROM `rental` AS `r` -- le pongo un alias para que sea más fácil y legible a la hora de usarlo
@@ -87,8 +97,9 @@ SELECT `r`.`customer_id`, `c`.`first_name`, `c`.`last_name`, COUNT(*) AS `total_
 
 /* 11. Encuentra la cantidad total de películas alquiladas por categoría y muestra el nombre de la categoría junto con el recuento de alquileres.
 */
--- realizo diferentes INNER JOIN para poder conectar las tablas entre sí para llegar hasta la tabla 'category'. 
--- se cuenta en este caso el ID del alquiler y lo agrupo mediante el ID de la categoría.
+
+-- realizo varios INNER JOIN para conectar las tablas rental, inventory, film_category y category para llagar a esta última 
+-- mediante la función COUNT cuento el número de alquileres por categoría y se agrupa mediante GROUP BY por el ID de la categoría
 -- lo ordeno alfabéticamente por que sea más sencillo de leer
 
 SELECT `ca`.`name`, COUNT(`r`.`rental_id`) AS `total_rent`
@@ -112,6 +123,8 @@ SELECT `rating`, AVG(`length`) AS `length_avg`
 
 /* 13. Encuentra el nombre y apellido de los actores que aparecen en la película con title "Indian Love".
 */
+-- mediante el uso de un INNER JOIN combino las tablas actor, film_actor y film
+-- filtro usando la clausula WHERE con la condición de que coincida con el título 
 
 SELECT `a`.`first_name`, `a`.`last_name`
 	FROM `actor` AS `a`
@@ -122,7 +135,8 @@ SELECT `a`.`first_name`, `a`.`last_name`
 	WHERE `f`.`title` = 'Indian Love'
     ORDER BY `a`.`last_name`;
     
--- voy a realizar una segunda opción utilizando CTEs. Creo una tabla temporal llamada 'film' con el ID de la película 'Indian Love'
+-- también puedo obtener el resultado usando una CTE que me busca el ID de la película 'Indian Love'
+-- a continuación introduzco la CTE en la cláusula WHERE
 
 WITH `film` AS ( SELECT `film_id`
 					FROM `film`
@@ -132,7 +146,7 @@ SELECT `a`.`first_name`, `a`.`last_name`
 	FROM `actor` AS `a`
     INNER JOIN `film_actor` AS `fa`
 		ON `a`.`actor_id` = `fa`.`actor_id`
-	WHERE `fa`.`film_id` IN (SELECT * -- aquí también podría poner 'film_id' pero como sólo hay una columna puedo poder el asterisco ya que es lo que busco
+	WHERE `fa`.`film_id` IN (SELECT * -- aquí también podría poner 'film_id' pero como sólo hay una columna puedo poder el asterisco
 								FROM `film`)
 	ORDER BY `a`.`last_name`;
 
@@ -146,14 +160,15 @@ SELECT `title` -- , `description`
 
 /* 15. Hay algún actor o actriz que no apareca en ninguna película en la tabla `film_actor`.
 */
+-- uso de una subconsulta para poder obtener los IDs de los actores que se encuentran en la tabla film_actor
+-- mediante el uso de NOT IN excluyo esos resultados para optener aquellos que no se encuentran en la tabla
+-- el resultado de la consulta da NULL ya que parece ser que todos los IDs de actores se encuentran la tabla film_actor
 
 SELECT *
 FROM `actor`
 WHERE `actor_id` NOT IN (SELECT `actor_id` -- selecciono la columa actor_id. Así en la subconsulta tenemos todos los IDs que están en la tabla film_actor
 							FROM `film_actor`); 
                             
--- El resultado de la consulta da NULL ya que parece ser que todos los IDs de actores se encuentran la tabla film_actor
-
 
 /* 16. Encuentra el título de todas las películas que fueron lanzadas entre el año 2005 y 2010.
 */
@@ -164,6 +179,8 @@ SELECT `title`, `release_year`
 
 /* 17. Encuentra el título de todas las películas que son de la misma categoría que "Family".
 */
+-- uso de dos INNER JOIN para conectar las tablas film, film_category y category
+-- se filtra para que se seleccione aquellas películas en la categoría 'Family'
 
 SELECT `f`.`title` -- , `c`.`name`
 	FROM `film` AS `f`
@@ -175,8 +192,8 @@ SELECT `f`.`title` -- , `c`.`name`
 
 /* 18. Muestra el nombre y apellido de los actores que aparecen en más de 10 películas.
 */
--- realizo un INNER JOIN mediante actor_id. Lo agrupo mediante el ID también.
--- en el HAVING pongo la condición usando COUNT en el ID de la película
+-- uso de un INNER JOIN entre las tablas actor y film_actor mediante actor_id. Lo agrupo mediante el ID también.
+-- en la cláusula HAVING se filtran los resultados para seleccionar los actores que tienen más de 10 películas
 
 SELECT `a`.`first_name`, `a`.`last_name`
 	FROM `actor` AS `a`
@@ -197,6 +214,8 @@ SELECT `title` -- , `rating`, `length`
 
 /* 20. Encuentra las categorías de películas que tienen un promedio de duración superior a 120 minutos y muestra el nombre de la categoría junto con el promedio de duración.
 */
+-- uso de tres INNER JOIN para conectar las tablas category, film_category y film. Se agrupan los resultados por en nombre de la categoría
+-- en la cláusula HAVING se filtra por promedio de duración
 
 SELECT `c`.`name`, AVG(`f`.`length`) AS `length_avg`
 	FROM `category` AS `c`
@@ -221,14 +240,18 @@ SELECT CONCAT(`a`.`first_name`, ' ', `a`.`last_name`) AS `nombre`, COUNT(`fa`.`f
 /* 22. Encuentra el título de todas las películas que fueron alquiladas por más de 5 días. 
 Utiliza una subconsulta para encontrar los rental_ids con una duración superior a 5 días y luego selecciona las películas correspondientes.
 */
+-- uso de INNER JOIN entre las tablas rental e inventory
+-- uso de la función DATEDIFF para calcular la diferencia de días entre la fecha de devolución y la de alquiler
+-- filtrado mediante la cláusula WHERE
 
+-- subconsulta: 
 SELECT DISTINCT `i`.`film_id` -- uso de DISTINCT para que no haya duplicados
 	FROM `rental` AS `r`
-    INNER JOIN `inventory` AS `i` -- se hace un INNER JOIN con la tabla 'inventory' para poder sacar el ID de la película
+    INNER JOIN `inventory` AS `i` 
 		ON `r`.`inventory_id` = `i`.`inventory_id`
-    WHERE DATEDIFF(`return_date`, `rental_date`) > 5; -- se usa DATEDIFF para calcular la diferencia en la fecha
+    WHERE DATEDIFF(`return_date`, `rental_date`) > 5; 
     
---
+-- introducir la subconsulta en la consulta:
 
 SELECT `title`
 	FROM `film`
@@ -244,6 +267,9 @@ SELECT `title`
 Utiliza una subconsulta para encontrar los actores que han actuado en películas de la categoría "Horror" y luego exclúyelos de la lista de actores.
 */
 
+-- subconsulta:
+-- busco los IDs de los actores que han actuado en películas de la categoría 'Horror'
+
 SELECT DISTINCT `fa`.`actor_id` -- uso de DISTINCT para que no haya duplicados
 	FROM `category` AS `c` 
     INNER JOIN `film_category` AS `fc`
@@ -251,6 +277,9 @@ SELECT DISTINCT `fa`.`actor_id` -- uso de DISTINCT para que no haya duplicados
 	INNER JOIN `film_actor` AS `fa`
 		ON `fc`.`film_id` = `fa`.`film_id`
 	WHERE `c`.`name` = 'Horror';
+    
+-- indroducción de la subconsulta en la consulta: 
+-- mediante el uso de NOT IN excluyo los IDs de los actores que habían actuado en películas de horror
 
 SELECT CONCAT(`first_name`, ' ', `last_name`) AS `name`, `actor_id`
 	FROM `actor`
@@ -270,6 +299,8 @@ SELECT CONCAT(`first_name`, ' ', `last_name`) AS `name`, `actor_id`
 /* 24. Encuentra el título de las películas que son comedias y tienen una duración mayor a 180 minutos en la tabla `film`.
 */
 
+-- subconsulta
+-- selecciono los IDs de las películas que pertenecen a la categoría 'Comedia'
 SELECT `f`.`film_id`
 	FROM `category` AS `c` 
     INNER JOIN `film_category` AS `fc`
@@ -278,7 +309,7 @@ SELECT `f`.`film_id`
 		ON `fc`.`film_id` = `f`.`film_id`
 	WHERE `c`.`name` = 'Comedy';
 
---
+-- se seleccionan los títulos de las películas de los IDs anteriores y con una duración mayor a 180 min. 
 
 SELECT `title` -- , `length`
 	FROM `film`
@@ -295,7 +326,8 @@ SELECT `title` -- , `length`
 La consulta debe mostrar el nombre y apellido de los actores y el número de películas en las que han actuado juntos.
 */
 
--- Hago una subconsulta emparejando los IDs de los actores que han trabajado juntos. Para eso realizo un INNER JOIN con la propia tabla
+-- subconsulta
+-- obtener todas las combinaciones únicas de pares de actores que han aparecido juntos en alguna película. Para eso realizo un INNER JOIN con la propia tabla
 
 SELECT `fa1`.`actor_id` AS `actor1_id`, `fa2`.`actor_id` AS `actor2_id`
 	FROM `film_actor` AS `fa1`
